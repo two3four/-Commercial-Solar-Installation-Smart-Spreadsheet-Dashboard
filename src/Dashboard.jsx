@@ -316,7 +316,7 @@ const Dashboard = () => {
                                                         style={{ flex: 1, background: 'rgba(15, 23, 42, 0.5)', border: '1px solid var(--border)', color: 'var(--text-main)', justifyContent: 'center' }}
                                                         onClick={() => downloadPropertyCSV(p)}
                                                     >
-                                                        Download CSV
+                                                        Download XLSX
                                                     </button>
                                                     <button className="premium-btn" style={{ flex: 1, justifyContent: 'center' }}>
                                                         Contact Lead

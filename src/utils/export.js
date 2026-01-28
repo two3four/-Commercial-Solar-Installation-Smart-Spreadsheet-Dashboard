@@ -1,51 +1,47 @@
+import * as XLSX from 'xlsx';
+
 /**
- * Generates and downloads a CSV file for a specific property.
+ * Generates and downloads a professional XLSX file for a specific property.
  * @param {Object} property - The property object containing all metrics.
  */
-export const downloadPropertyCSV = (property) => {
-    const headers = [
-        "Property Address",
-        "Zip Code",
-        "Total Roof Area (sq ft)",
-        "Usable Roof Area (sq ft)",
-        "Usable Percentage",
-        "Solar Capacity (Watts)",
-        "Solar Capacity (kW)",
-        "Solar Capacity (MW)",
-        "Power Density (W/sq ft)",
-        "Owner Email",
-        "Phone Number",
-        "Timestamp"
-    ];
-
+export const downloadPropertyXLSX = (property) => {
+    // 1. Prepare Data with clear, branded headers
     const data = [
-        property.address,
-        property.zip,
-        property.roofArea,
-        property.usableArea,
-        "80%",
-        property.capacityWatts,
-        property.capacityKW.toFixed(2),
-        property.capacityMW.toFixed(4),
-        "20",
-        property.email,
-        property.phone,
-        property.timestamp
+        ["SOLAR HARVEST - PROPERTY INSTALLATION REPORT"],
+        ["Generated on: " + new Date().toLocaleString()],
+        [], // Spacer
+        ["PROPERTY INFORMATION", ""],
+        ["Address", property.address],
+        ["Zip Code", property.zip],
+        ["Management Email", property.email],
+        ["Contact Phone", property.phone],
+        [], // Spacer
+        ["TECHNICAL SPECIFICATIONS", ""],
+        ["Total Roof Area", property.roofArea.toLocaleString() + " sq ft"],
+        ["Usable Roof Area (80%)", property.usableArea.toLocaleString() + " sq ft"],
+        ["Power Density", "20 Watts / sq ft"],
+        [], // Spacer
+        ["SOLAR CAPACITY ESTIMATES", ""],
+        ["Total Watts", property.capacityWatts.toLocaleString() + " W"],
+        ["Total Kilowatts", property.capacityKW.toFixed(2) + " kW"],
+        ["Total Megawatts", property.capacityMW.toFixed(4) + " MW"],
+        ["Project Status", "Qualified (Commercial)"]
     ];
 
-    const csvContent = [
-        headers.join(","),
-        data.map(val => `"${val}"`).join(",")
-    ].join("\n");
+    // 2. Create Workbook and Worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Property Report");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    // 3. Set Column Widths for readability
+    ws['!cols'] = [
+        { wch: 25 }, // Column A
+        { wch: 40 }, // Column B
+    ];
 
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Solar_Report_${property.address.replace(/\s+/g, '_')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 4. Trigger Download
+    XLSX.writeFile(wb, `Solar_Harvest_Report_${property.address.replace(/\s+/g, '_')}.xlsx`);
 };
+
+// Also keep the old one for compatibility or rename if needed
+export const downloadPropertyCSV = downloadPropertyXLSX; 
