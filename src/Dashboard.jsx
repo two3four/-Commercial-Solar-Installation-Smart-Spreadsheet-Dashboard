@@ -11,7 +11,9 @@ import {
     Trash2,
     ExternalLink,
     ChevronRight,
-    Info
+    Info,
+    RefreshCw,
+    Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PROJECT_RULES } from './constants';
@@ -22,7 +24,8 @@ import {
     toMW,
     isValidRoofSize
 } from './utils/calculations';
-import { downloadPropertyCSV } from './utils/export';
+import { downloadPropertyXLSX } from './utils/export';
+import { fetchFromGitHub, saveToGitHub } from './utils/githubSync';
 
 const Dashboard = () => {
     const [properties, setProperties] = useState(() => {
@@ -32,6 +35,9 @@ const Dashboard = () => {
 
     const [activePropertyId, setActivePropertyId] = useState(null);
     const [errors, setErrors] = useState({});
+    const [syncing, setSyncing] = useState(false);
+    const [showSyncSettings, setShowSyncSettings] = useState(false);
+    const [ghToken, setGhToken] = useState(localStorage.getItem('gh_token') || '');
 
     const [newProperty, setNewProperty] = useState({
         address: '',
@@ -41,14 +47,53 @@ const Dashboard = () => {
         phone: ''
     });
 
+    // Local Persistence
     useEffect(() => {
         localStorage.setItem('solar_properties', JSON.stringify(properties));
     }, [properties]);
 
+    // GitHub Sync Handlers
+    const handleSyncDown = async () => {
+        if (!ghToken) {
+            setShowSyncSettings(true);
+            return;
+        }
+        setSyncing(true);
+        const data = await fetchFromGitHub(ghToken);
+        if (data) {
+            setProperties(data);
+            alert("Data synced from GitHub successfully!");
+        } else {
+            alert("Failed to sync from GitHub. Please check your token.");
+        }
+        setSyncing(false);
+    };
+
+    const handleSyncUp = async () => {
+        if (!ghToken) {
+            setShowSyncSettings(true);
+            return;
+        }
+        setSyncing(true);
+        const success = await saveToGitHub(ghToken, properties);
+        if (success) {
+            alert("Data saved to GitHub successfully!");
+        } else {
+            alert("Failed to save to GitHub. Please check your token.");
+        }
+        setSyncing(false);
+    };
+
+    const saveToken = (e) => {
+        e.preventDefault();
+        localStorage.setItem('gh_token', ghToken);
+        setShowSyncSettings(false);
+        alert("GitHub Token saved locally!");
+    };
+
     const handleAddProperty = (e) => {
         e.preventDefault();
 
-        // Validation
         const roofAreaNum = parseFloat(newProperty.roofArea);
         if (!isValidRoofSize(roofAreaNum)) {
             setErrors({ roofArea: `Roof size must be between ${PROJECT_RULES.MIN_ROOF_SIZE.toLocaleString()} and ${PROJECT_RULES.MAX_ROOF_SIZE.toLocaleString()} sq ft.` });
@@ -92,22 +137,64 @@ const Dashboard = () => {
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '4px' }}>Commercial Solar Installation Management</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '24px' }}>
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            className="premium-btn"
+                            style={{ padding: '8px 16px', fontSize: '0.875rem', background: 'rgba(255,255,255,0.05)' }}
+                            onClick={() => setShowSyncSettings(!showSyncSettings)}
+                        >
+                            <Settings size={16} />
+                        </button>
+                        <button
+                            className="premium-btn"
+                            disabled={syncing}
+                            style={{ padding: '8px 16px', fontSize: '0.875rem' }}
+                            onClick={handleSyncDown}
+                        >
+                            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Syncing...' : 'Sync Cloud'}
+                        </button>
+                    </div>
+
                     <div className="glass-panel" style={{ padding: '12px 24px', textAlign: 'right' }}>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Portfolio</div>
                         <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary)' }}>{toMW(totalCapacityWatts).toFixed(2)} MW</div>
-                    </div>
-                    <div className="glass-panel" style={{ padding: '12px 24px', textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Projects</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: '700' }}>{properties.length}</div>
                     </div>
                 </div>
             </header>
 
             <main style={{ flex: 1, padding: '40px', display: 'grid', gridTemplateColumns: '1fr 350px', gap: '40px' }}>
-
-                {/* Left Side: Property Table and Rules */}
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+                    {/* Sync Settings Modal/Panel */}
+                    <AnimatePresence>
+                        {showSyncSettings && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="glass-panel"
+                                style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--primary)' }}
+                            >
+                                <h3 style={{ fontSize: '1rem', marginBottom: '16px' }}>GitHub Sync Settings (Free Cloud Memory)</h3>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                                    Enter your GitHub Personal Access Token to sync data across devices for free.
+                                    Data is saved to a <code>properties.json</code> file in your repo.
+                                </p>
+                                <form onSubmit={saveToken} style={{ display: 'flex', gap: '12px' }}>
+                                    <input
+                                        type="password"
+                                        className="input-field"
+                                        placeholder="ghp_xxxxxxxxxxxx"
+                                        value={ghToken}
+                                        onChange={e => setGhToken(e.target.value)}
+                                        style={{ flex: 1 }}
+                                    />
+                                    <button type="submit" className="premium-btn">Save Token</button>
+                                </form>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Rules Banner */}
                     <div className="glass-panel" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(251, 191, 36, 0.05)', borderColor: 'rgba(251, 191, 36, 0.2)' }}>
@@ -122,6 +209,9 @@ const Dashboard = () => {
                                 <span>• Power: {PROJECT_RULES.POWER_DENSITY_W_PER_SQFT} W/sq ft</span>
                             </div>
                         </div>
+                        <button className="premium-btn" onClick={handleSyncUp} style={{ padding: '8px 20px' }}>
+                            Save to Cloud
+                        </button>
                     </div>
 
                     <div className="glass-panel" style={{ overflow: 'hidden' }}>
@@ -191,7 +281,6 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                {/* Right Side: Add Property Form */}
                 <aside style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div className="glass-panel" style={{ padding: '32px' }}>
                         <h3 style={{ fontSize: '1.125rem', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -260,7 +349,6 @@ const Dashboard = () => {
                         </form>
                     </div>
 
-                    {/* Sub-sheet View (Conditional Overlay/Section) */}
                     <AnimatePresence>
                         {activePropertyId && (
                             <motion.div
@@ -314,7 +402,7 @@ const Dashboard = () => {
                                                     <button
                                                         className="premium-btn"
                                                         style={{ flex: 1, background: 'rgba(15, 23, 42, 0.5)', border: '1px solid var(--border)', color: 'var(--text-main)', justifyContent: 'center' }}
-                                                        onClick={() => downloadPropertyCSV(p)}
+                                                        onClick={() => downloadPropertyXLSX(p)}
                                                     >
                                                         Download XLSX
                                                     </button>
