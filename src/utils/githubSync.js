@@ -19,13 +19,15 @@ export const fetchFromGitHub = async (token) => {
             }
         });
 
-        if (response.status === 404) return []; // File doesn't exist yet
+        if (response.status === 404) return { data: [], status: 'not_found' };
+        if (response.status === 401) return { data: null, status: 'unauthorized' };
         if (!response.ok) throw new Error('Failed to fetch from GitHub');
 
-        return await response.json();
+        const data = await response.json();
+        return { data: Array.isArray(data) ? data : [], status: 'success' };
     } catch (error) {
         console.error("GitHub Fetch Error:", error);
-        return null;
+        return { data: null, status: 'error' };
     }
 };
 

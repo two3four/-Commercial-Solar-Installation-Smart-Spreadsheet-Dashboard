@@ -59,21 +59,35 @@ const Dashboard = () => {
             return;
         }
         setSyncing(true);
-        const data = await fetchFromGitHub(ghToken);
+        const { data: cloudData, status } = await fetchFromGitHub(ghToken);
 
-        if (data === null) {
-            alert("Nothing found on Cloud. Try clicking 'Save to Cloud' first to upload your data.");
-        } else if (Array.isArray(data)) {
-            if (data.length === 0 && properties.length > 0) {
-                if (!confirm("Cloud data is empty. Overwrite your local properties with empty data?")) {
-                    setSyncing(false);
-                    return;
+        if (status === 'unauthorized') {
+            alert("Invalid GitHub Token. Please check your settings.");
+        } else if (status === 'not_found' || (Array.isArray(cloudData) && cloudData.length === 0)) {
+            alert("Your Cloud Storage is empty. Click 'Save to Cloud' first to upload your data.");
+        } else if (status === 'success') {
+            // MERGE Logic: Keep all unique properties (by ID)
+            const combined = [...properties, ...cloudData];
+            const uniqueMap = new Map();
+            combined.forEach(p => {
+                if (!uniqueMap.has(p.id)) {
+                    uniqueMap.set(p.id, p);
+                } else {
+                    // If duplicate, keep the one with the latest timestamp if available
+                    const existing = uniqueMap.get(p.id);
+                    if (new Date(p.timestamp) > new Date(existing.timestamp)) {
+                        uniqueMap.set(p.id, p);
+                    }
                 }
-            }
-            setProperties(data);
-            alert("Data synced from GitHub successfully!");
+            });
+
+            const mergedProperties = Array.from(uniqueMap.values())
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            setProperties(mergedProperties);
+            alert(`Sync Complete! Merged ${cloudData.length} properties from cloud.`);
         } else {
-            alert("Unexpected data format from GitHub.");
+            alert("Failed to sync from GitHub. Please check your internet connection.");
         }
         setSyncing(false);
     };
