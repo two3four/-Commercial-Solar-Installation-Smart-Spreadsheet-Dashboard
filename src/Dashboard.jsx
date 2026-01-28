@@ -60,11 +60,20 @@ const Dashboard = () => {
         }
         setSyncing(true);
         const data = await fetchFromGitHub(ghToken);
-        if (data) {
+
+        if (data === null) {
+            alert("Nothing found on Cloud. Try clicking 'Save to Cloud' first to upload your data.");
+        } else if (Array.isArray(data)) {
+            if (data.length === 0 && properties.length > 0) {
+                if (!confirm("Cloud data is empty. Overwrite your local properties with empty data?")) {
+                    setSyncing(false);
+                    return;
+                }
+            }
             setProperties(data);
             alert("Data synced from GitHub successfully!");
         } else {
-            alert("Failed to sync from GitHub. Please check your token.");
+            alert("Unexpected data format from GitHub.");
         }
         setSyncing(false);
     };
