@@ -144,7 +144,7 @@ const Dashboard = () => {
                             style={{ padding: '8px 16px', fontSize: '0.875rem', background: 'rgba(255,255,255,0.05)' }}
                             onClick={() => setShowSyncSettings(!showSyncSettings)}
                         >
-                            <Settings size={16} />
+                            <Settings size={16} /> Sync Settings
                         </button>
                         <button
                             className="premium-btn"
