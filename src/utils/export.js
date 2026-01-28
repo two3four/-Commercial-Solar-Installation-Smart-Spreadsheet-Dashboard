@@ -1,47 +1,48 @@
 import * as XLSX from 'xlsx';
 
 /**
- * Generates and downloads a professional XLSX file for a specific property.
+ * Generates and downloads a professional XLSX file for a specific property using a template.
  * @param {Object} property - The property object containing all metrics.
  */
-export const downloadPropertyXLSX = (property) => {
-    // 1. Prepare Data with clear, branded headers
-    const data = [
-        ["SOLAR HARVEST - PROPERTY INSTALLATION REPORT"],
-        ["Generated on: " + new Date().toLocaleString()],
-        [], // Spacer
-        ["PROPERTY INFORMATION", ""],
-        ["Address", property.address],
-        ["Zip Code", property.zip],
-        ["Management Email", property.email],
-        ["Contact Phone", property.phone],
-        [], // Spacer
-        ["TECHNICAL SPECIFICATIONS", ""],
-        ["Total Roof Area", property.roofArea.toLocaleString() + " sq ft"],
-        ["Usable Roof Area (80%)", property.usableArea.toLocaleString() + " sq ft"],
-        ["Power Density", "20 Watts / sq ft"],
-        [], // Spacer
-        ["SOLAR CAPACITY ESTIMATES", ""],
-        ["Total Watts", property.capacityWatts.toLocaleString() + " W"],
-        ["Total Kilowatts", property.capacityKW.toFixed(2) + " kW"],
-        ["Total Megawatts", property.capacityMW.toFixed(4) + " MW"],
-        ["Project Status", "Qualified (Commercial)"]
-    ];
+export const downloadPropertyXLSX = async (property) => {
+    try {
+        // 1. Fetch the template file from the public directory
+        const response = await fetch('/templates/template.xlsx');
+        const arrayBuffer = await response.arrayBuffer();
 
-    // 2. Create Workbook and Worksheet
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Property Report");
+        // 2. Read the workbook
+        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
 
-    // 3. Set Column Widths for readability
-    ws['!cols'] = [
-        { wch: 25 }, // Column A
-        { wch: 40 }, // Column B
-    ];
+        // 3. Populate metrics into the template (Mapping to the structure seen in the user's screenshot)
+        // Based on the screenshot, it looks like a flat header-row structure starting at row 1
+        // We will append a new row with the property data to maintain the template formatting
 
-    // 4. Trigger Download
-    XLSX.writeFile(wb, `Solar_Harvest_Report_${property.address.replace(/\s+/g, '_')}.xlsx`);
+        const rowData = [
+            property.address,
+            property.zip,
+            property.roofArea,
+            property.usableArea,
+            "80%",
+            property.capacityWatts,
+            property.capacityKW.toFixed(2),
+            property.capacityMW.toFixed(4),
+            "20",
+            property.email,
+            property.phone,
+            property.timestamp
+        ];
+
+        // Append to row 2
+        XLSX.utils.sheet_add_aoa(ws, [rowData], { origin: "A2" });
+
+        // 4. Trigger Download
+        XLSX.writeFile(wb, `Solar_Harvest_Report_${property.address.replace(/\s+/g, '_')}.xlsx`);
+    } catch (error) {
+        console.error("Error generating XLSX from template:", error);
+        alert("Failed to generate report using template. Please try again.");
+    }
 };
 
-// Also keep the old one for compatibility or rename if needed
-export const downloadPropertyCSV = downloadPropertyXLSX; 
+export const downloadPropertyCSV = downloadPropertyXLSX;
