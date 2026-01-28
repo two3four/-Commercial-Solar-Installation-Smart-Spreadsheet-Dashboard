@@ -15,27 +15,23 @@ export const downloadPropertyXLSX = async (property) => {
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
 
-        // 3. Populate metrics into the template (Mapping to the structure seen in the user's screenshot)
-        // Based on the screenshot, it looks like a flat header-row structure starting at row 1
-        // We will append a new row with the property data to maintain the template formatting
+        // 3. Precise Cell Mapping based on user template
+        // Property Information
+        ws['B4'] = { v: property.address };
+        ws['B5'] = { v: property.zip };
+        ws['B6'] = { v: property.email };
+        ws['B7'] = { v: property.phone };
 
-        const rowData = [
-            property.address,
-            property.zip,
-            property.roofArea,
-            property.usableArea,
-            "80%",
-            property.capacityWatts,
-            property.capacityKW.toFixed(2),
-            property.capacityMW.toFixed(4),
-            "20",
-            property.email,
-            property.phone,
-            property.timestamp
-        ];
+        // Technical Specifications
+        ws['B10'] = { v: property.roofArea };
+        ws['B11'] = { v: property.usableArea };
+        ws['B12'] = { v: "20 Watts / sq ft" };
 
-        // Append to row 2
-        XLSX.utils.sheet_add_aoa(ws, [rowData], { origin: "A2" });
+        // Solar Capacity Estimates
+        ws['B15'] = { v: property.capacityWatts };
+        ws['B16'] = { v: parseFloat(property.capacityKW.toFixed(2)) };
+        ws['B17'] = { v: parseFloat(property.capacityMW.toFixed(4)) };
+        ws['B18'] = { v: "Qualified (Commercial)" };
 
         // 4. Trigger Download
         XLSX.writeFile(wb, `Solar_Harvest_Report_${property.address.replace(/\s+/g, '_')}.xlsx`);
