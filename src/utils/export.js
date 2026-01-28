@@ -18,7 +18,9 @@ export const downloadPropertyXLSX = async (property) => {
 
         // 3. Populate Data into specific cells (B4-B18)
         // Property Information
-        worksheet.getCell('B4').value = property.address;
+        const addressCell = worksheet.getCell('B4');
+        addressCell.value = property.address;
+        addressCell.alignment = { wrapText: true, vertical: 'top' };
         worksheet.getCell('B5').value = property.zip;
         worksheet.getCell('B6').value = property.email;
         worksheet.getCell('B7').value = property.phone;
